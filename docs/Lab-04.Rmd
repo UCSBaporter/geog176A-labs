@@ -1,0 +1,289 @@
+---
+title: "Geography 176A: Tesselations, Point-in-Polygon"
+author: '[Abigail Porter](https://ucsbaporter.github.io/UCSBaporterW1/first-webpage/index.html)'
+subtitle: 'Lab 04: exercise 15 (Q1)'
+output:
+  html_document:
+    theme: journal
+---
+
+### Libraries
+
+``` {r}
+# SPDS
+library(tidyverse)
+library(sf)
+library(units)
+
+# Data
+library(USAboundaries)
+library(rnaturalearth)
+library(rmapshaper)
+library(readxl)
+
+# Visualization
+library(gghighlight)
+library(ggrepel)
+library(knitr)
+library(ggthemes)
+library(leaflet)
+library(leafpop)
+```
+
+### Question 1:
+
+```{r}
+#1.1
+
+CONUS = USAboundaries::us_counties() %>%
+  filter(!(state_name %in% c("Puerto Rico", "Alaska", "Hawaii"))) %>%
+  st_transform(5070)
+
+#1.2
+
+county_centroids = st_centroid(CONUS) %>%
+  st_union() %>%
+  st_cast("MULTIPOINT")
+
+#1.3
+
+voronoi_grid = st_voronoi(county_centroids) %>%
+  st_as_sf() %>%
+  st_cast() %>%
+  mutate(id = 1:n())
+
+tri_grid = st_triangulate(county_centroids) %>%
+  st_as_sf() %>%
+  st_cast() %>%
+  mutate(id = 1:n())
+
+# Regular Tiles (L15, slide 29)
+sq_grid = st_make_grid(CONUS, n = c(70, 50)) %>%
+  st_as_sf() %>%
+  st_cast() %>%
+  mutate(id = 1:n())
+
+# (L15, slide 31)
+
+hex_grid = st_make_grid(CONUS, n = c(70, 50), square = FALSE) %>%
+  st_as_sf() %>%
+  mutate(id = 1:n())
+
+#1.4 & 1.5
+
+#st_voronoi (L15, slide 41)
+
+plot_tess(voronoi_grid, "Voronoi Coverage")
+
+voronoi_grid = st_intersection(voronoi_grid, st_union(CONUS))
+
+plot_tess(voronoi_grid, "Voronoi Coverage") +
+  geom_sf(data = county_centroids, col = "darkred", size = .2)
+```
+
+
+```{r}
+tri_grid = st_intersection(tri_grid, st_union(CONUS))
+
+plot_tess(tri_grid, "Triangulation Coverage") +
+  geom_sf(data = county_centroids, col = "darkred", size = .3)
+```
+
+```{r}
+#1.6
+
+plot_tess = function(data, title)
+  ggplot() +
+    geom_sf(data = data, fill = "white", col = "navy", size = .2) +
+    theme_void() +
+    labs(title = title, caption = paste("This tesselation has:", nrow(data), "tiles")) +
+    theme(plot.title = element_text(hjust = .5, color = "navy", face = "bold"))
+```
+
+```{r}
+#example given
+#Tesselation plotting function
+plot_tess(data = CONUS, "Counties")
+```
+
+```{r}
+#Grid
+plot_tess(sq_grid, "Square Grid Coverage")
+```
+
+```{r}
+#Hex
+plot_tess(hex_grid, "Hexagonal Grid Coverage")
+```
+
+### Question 2:
+
+```{r}
+
+sum_tess = function(data, title){
+  
+  areas = drop_units(set_units(st_area(data), "km2"))
+  
+  data.frame(tesselation = title,
+             total_feat = length(areas),
+                    mean_sq = mean(areas),
+                    stan_dev = sd(areas),
+                    total_area = sum(areas))
+}
+
+tess_summary = bind_rows(
+  sum_tess(voronoi_grid, "Voronoi Coverage"),
+  sum_tess(data = tri_grid, "Triangulation Coverage"),
+  sum_tess(data = CONUS, "Counties"),
+  sum_tess(data = sq_grid, "Square Grid Coverage"),
+  sum_tess(data = hex_grid, "Hexagonal Grid Coverage"))
+
+knitr::kable(tess_summary, caption = "Tessellated Surfaces", col.names = c("Tessellation", "Features", "Mean Area (km2)", "Standard Deviation", "Total Area"))
+
+``` 
+### Question 3:
+
+```{r}
+#3.1
+NID2019 = read_excel("~/github/geog176A-labs/data/NID2019_U.xlsx") 
+
+dam_sf = NID2019 %>% 
+  filter(!is.na(LATITUDE), !is.na(LONGITUDE)) %>% 
+  st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326) %>%     
+  st_transform(5070)
+
+#3.2
+point_in_polygon3 = function(points, polygon, id){
+  st_join(polygon, points) %>%
+    st_drop_geometry() %>%
+    dplyr::count(.data[[id]]) %>%
+    setNames(c(id, "n")) %>%
+    left_join(polygon, by = id) %>%
+    st_as_sf()
+}
+
+#3.3
+
+CONUS_pip = point_in_polygon3(dam_sf, CONUS, "geoid")
+
+voronoi_pip = point_in_polygon3(dam_sf, voronoi_grid, "id")
+
+tri_pip = point_in_polygon3(dam_sf, tri_grid, "id")
+
+sq_pip = point_in_polygon3(dam_sf, sq_grid, "id")
+
+hex_pip = point_in_polygon3(dam_sf, hex_grid, "id")
+
+
+#3.4
+plot_pip = function(data, title){
+  ggplot() +
+    geom_sf(data = data, aes(fill = log(n)), 
+            alpha = .9, size = .2) +
+    scale_fill_viridis_b() +
+    theme_void() +
+    theme(legend.position = 'right',
+          plot.title = element_text(face = "bold", color = "blue", 
+                                    hjust = .5, size = 16), 
+    plot.subtitle = element_text(face = "bold", color = "blue", 
+                                    hjust = .5, size = 16)) +
+    labs(title = "US Army Corp of Engineers:", subtitle = "National Dam Inventory (NID)",
+         caption = paste0(sum(data$n), " Dams represented"))
+}
+
+```
+
+```{r}
+# Counties
+plot_pip(CONUS_pip, "Counties")
+```
+```{r}
+# Voronoi Coverage
+plot_pip(voronoi_pip, "Voronoi Coverage")
+```
+
+```{r}
+# Triangulation Coverage
+plot_pip(tri_pip, "Triangulation Coverage")
+```
+
+```{r}
+# Square Grid Coverage
+plot_pip(sq_pip, "Square Grid Coverage")
+```
+
+```{r}
+# Hexagonal Grid Coverage
+plot_pip(hex_pip, "Hexagonal Grid Coverage")
+```
+### (3.6: Influence of tessellated surface in visualixation of point counts)
+I will choose to use the Hexagonal Grid Coverage because I believe it is visually easier to review than the Square Grid Coverage.  Additionally, the hexagonal shape appears to distort the border less and the overall number of dams represented. 
+```{r}
+```
+
+### Question 4:
+
+```{r}
+
+dam_sf %>% filter(grepl('I', PURPOSES)) %>% point_in_polygon3(hex_grid, 'id') %>% plot_pip('Irrigation Dam') + gghighlight(n > (mean(n) + sd(n))) +
+  labs(title = "Number of Dams for Irrigation:")
+
+```
+```{r}
+
+dam_sf %>% filter(grepl('N', PURPOSES)) %>% point_in_polygon3(hex_grid, 'id') %>% plot_pip('Naviagtion Dam') + gghighlight(n > (mean(n) + sd(n))) +
+  labs(title = "Number of Dams for Navigation:")
+
+```
+```{r}
+
+dam_sf %>% filter(grepl('R', PURPOSES)) %>% point_in_polygon3(hex_grid, 'id') %>% plot_pip('Recreation Dam') + gghighlight(n > (mean(n) + sd(n))) +
+  labs(title = "Number of Dams for Recreation:")
+
+```
+```{r}
+
+dam_sf %>% filter(grepl('F', PURPOSES)) %>% point_in_polygon3(hex_grid, 'id') %>% plot_pip('Fish and Wildlife Dam') + gghighlight(n > (mean(n) + sd(n))) +
+  labs(title = "Number of Dams for Fish and Wildlife:")
+
+```
+```{r}
+
+dam_sf %>% filter(grepl('S', PURPOSES)) %>% point_in_polygon3(hex_grid, 'id') %>% plot_pip('Water Supply Dam') + gghighlight(n > (mean(n) + sd(n))) +
+  labs(title = "Number of Dams for Water Supply:")
+
+```
+```{r}
+
+dam_sf %>% filter(grepl('P', PURPOSES)) %>% point_in_polygon3(hex_grid, 'id') %>% plot_pip('Fire Protection Dam') + gghighlight(n > (mean(n) + sd(n))) +
+  labs(title = "Number of Dams for Fire Protection:")
+
+```
+```{r}
+
+dam_sf %>% filter(grepl('D', PURPOSES)) %>% point_in_polygon3(hex_grid, 'id') %>% plot_pip('Debris Control Dam') + gghighlight(n > (mean(n) + sd(n))) +
+  labs(title = "Number of Dams for Debris Control:")
+
+```
+### (4.3: Geographic Distribution of Dams)
+  Each dam category shows different location and quantity of dams represented.  Though, given the Hexagonal pattern the exact location is harder to determine and place within a specific area, county, or state at the given scale.  Overall there are patterns of location between the different dam categories that can be understood based on region (NE, NW, SE, SW, MW, etc).  I believe that the hexagonal pattern is the best choice outside of the county identifier for general understanding of the dam category regional patterns, but the county identifier would be easier to view if familiar with county location/shape throughout the country.  
+  Dams are placed where river systems and/or lakes (both permanent and/or ice melt filled) are located for many purposes.  Irrigation dams have the largest overall coverage from the NW diagonally down toward SE which coincides with agricultural usage.  Navigational dams are mainly scattered throughout the east coast to mid-Atlantic, but also appear between the border of WA and OR along the large river border.  Recreational dams had the largest represented numbers (38077) placed almost equally away from the coast throughout the east which makes sense with hot and very humid summers.  I was surprised that Fish and Wildlife dams and Fire Protection dams are not found in California, but possibly that is explained by the large Water Supply dam use in the state.  As for Debris control dams, I would be curious to learn about this need more in depth.       
+
+```{r}
+```
+### Extra Credit:
+
+```{r}
+major_river = read_sf("~/github/geog176A-labs/data/majorrivers_0_0/MajorRivers.shp") %>% filter(SYSTEM == "Mississippi") 
+
+MS_river = dam_sf %>% group_by(STATE) %>%  filter(HAZARD == "H") %>% slice_max( NID_STORAGE, n=1) %>% ungroup()%>%  point_in_polygon3(hex_grid, 'id') %>% plot_pip('Hazard Dam') + gghighlight(n > (mean(n) + sd(n))) +
+  labs(title = "Number of Hazard Dams:")  
+
+leaflet(data = MS_river) %>% addProviderTiles(providers$CartoDB) %>% 
+  addPolylines(data = major_river) 
+
+```
+
+```{r}
+
+```
