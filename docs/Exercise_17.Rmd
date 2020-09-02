@@ -1,0 +1,55 @@
+---
+title: "Exercise - 17"
+output: html_document
+---
+
+### Libraries
+
+``` {r, warning=FALSE, message=FALSE}
+
+# SPDS
+library(tidyverse)
+library(sf)
+library(units)
+library(elevatr)
+
+# Data
+library(USAboundaries)
+library(rnaturalearth)
+library(rmapshaper)
+library(readxl)
+
+# Visualization
+library(gghighlight)
+library(ggrepel)
+library(knitr)
+library(ggthemes)
+library(leaflet)
+library(leafpop)
+library(raster)
+library(rgdal)
+```
+
+```{r setup, include=FALSE}
+cities = readr::read_csv("~/github/geog176A-labs/data/uscities.csv") %>%
+  st_as_sf(coords = c("lng", "lat"), crs = 4326) %>%
+  filter(city == "Goleta") %>%
+  st_transform(5070) %>% 
+  st_buffer(5000) %>% 
+  st_bbox() %>% 
+  st_as_sfc() %>% 
+  st_as_sf()
+
+r_cities = elevatr::get_elev_raster(cities, z = 11) %>% 
+  crop(cities)
+
+writeRaster(r_cities, filename = "data/goleta-elev.tif", overwrite = TRUE)
+
+plot(r_cities)
+
+
+```
+
+### (Describe properties:)
+I'm not sure why but I was unable to see the properties information in the console?  From the "tif" file it appears that black represents sea-level elevation and that all elevation above sea-level is represented in white.  Around the swamp area just south-east of campus it appears that the elevation differs from sea-level to above continuously, creating a grey ring around that area.   
+
