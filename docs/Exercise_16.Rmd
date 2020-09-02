@@ -1,0 +1,53 @@
+---
+title: "Exercise 16"
+output: html_document
+---
+### Libraries
+
+``` {r, warning=FALSE, message=FALSE}
+
+# SPDS
+library(tidyverse)
+library(sf)
+library(units)
+library(elevatr)
+
+# Data
+library(USAboundaries)
+library(rnaturalearth)
+library(rmapshaper)
+library(readxl)
+
+# Visualization
+library(gghighlight)
+library(ggrepel)
+library(knitr)
+library(ggthemes)
+library(leaflet)
+library(leafpop)
+library(raster)
+library(rgdal)
+```
+
+```{r}
+NID2019 = read_excel("~/github/geog176A-labs/data/NID2019_U.xlsx") 
+
+dam_sf = NID2019 %>% 
+  filter(!is.na(LATITUDE), !is.na(LONGITUDE)) %>% 
+  st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326) %>%     
+  st_transform(5070)
+
+major_river = read_sf("~/github/geog176A-labs/data/majorrivers_0_0/MajorRivers.shp") %>% 
+  filter(SYSTEM == "St. Lawrence") 
+
+MS_river = dam_sf %>% 
+  group_by(STATE) %>%  
+  filter(HAZARD == "H", grepl("C", PURPOSES)) %>% 
+  slice_max(NID_STORAGE, n=1) 
+
+leaflet() %>% 
+  addProviderTiles(providers$CartoDB) %>% 
+  addPolylines(data = major_river) %>% 
+  addCircleMarkers(data = st_transform(MS_river, 4326))
+
+```
