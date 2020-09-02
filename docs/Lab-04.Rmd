@@ -289,14 +289,14 @@ dam_sf %>% filter(grepl('D', PURPOSES)) %>% point_in_polygon3(hex_grid, 'id') %>
 ```{r}
 major_river = read_sf("~/github/geog176A-labs/data/majorrivers_0_0/MajorRivers.shp") %>% filter(SYSTEM == "Mississippi") 
 
-MS_river = dam_sf %>% group_by(STATE) %>%  filter(HAZARD == "H") %>% 
-  slice_max( NID_STORAGE, n=1) %>% ungroup() %>%
-  point_in_polygon3(hex_grid, 'id') %>% 
-  plot_pip('Hazard Dam') + gghighlight(n > (mean(n) + sd(n))) +
-  labs(title = "Number of Hazard Dams:")  
+MS_river = dam_sf %>% 
+  group_by(STATE) %>%  
+  filter(HAZARD == "H", grepl("C", PURPOSES)) %>% 
+  slice_max(NID_STORAGE/1500000)
 
 leaflet(data = MS_river) %>% addProviderTiles(providers$CartoDB) %>% 
-  addPolylines(data = major_river) 
+  addPolylines(data = major_river) %>% 
+  addCircleMarkers(data = st_transform(MS_river, 4326), radius = 1, color = "red")
 
 ```
 
