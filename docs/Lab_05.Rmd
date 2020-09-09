@@ -1,0 +1,323 @@
+---
+title: "Geography 176A: Rasters & Remote Sensing"
+author: '[Abigail Porter](https://ucsbaporter.github.io/UCSBaporterW1/first-webpage/index.html)'
+subtitle: 'Lab 05'
+output:
+  html_document:
+  theme: journal
+---
+
+### Libraries
+```{r}
+#Data Manipulation
+library(tidyverse)
+#Raster Data Handling
+library(raster)
+#Keyless Landset Data (2013-2017)
+library(getlandsat)
+#Rapid Interactive Visualization
+library(mapview)
+#Vector Data Processing
+library(sf)
+
+library(osmdata)
+
+#
+library(USAboundaries)
+library(rnaturalearth)
+library(rmapshaper)
+library(readxl)
+library(gghighlight)
+library(ggrepel)
+library(knitr)
+library(ggthemes)
+library(leaflet)
+library(leafpop)
+library(units)
+```
+
+### Question 1:
+```{r}
+bb = read_csv("../data/uscities.csv") %>%
+  filter(city == "Palo") %>%
+  st_as_sf(coords = c("lng", "lat"), crs = 4326) %>%
+  st_transform(5070) %>%
+  st_buffer(5000) %>%
+  st_bbox() %>%
+  st_as_sfc() %>%
+  st_sf()
+```
+
+### Question 2:
+```{r}
+meta = read_csv("../data/palo-flood.csv")
+
+files = lsat_scene_files(meta$download_url) %>%
+  filter(grepl(paste0("B", 1:6, ".TIF$", collapse = "|"), file)) %>%
+  arrange(file) %>%
+  pull(file)
+#"paste0" gives space between columns, "paste" will not give a space.
+# We only need "6" bands because they are very large
+#for (i in 1:6) download each of these bands for us
+
+st = sapply(files, lsat_image)
+# "sapply" is returning a list of vectors (instead of repeating the role 6 times)
+
+s = stack(st) %>%
+  setNames(c(paste0("band", 1:6)))
+
+# stack(st)
+```
+### The dimensions of my stacked image are as follows: nrow (7811), ncol (7681), ncell (59,996,291), nlayers (6).  The CRS is UTM WGS84 and the cell resolution is 30 x 30 (meters).   
+
+```{r}
+cropper = bb %>% st_as_sf() %>%  st_transform(crs(s))
+
+r = crop(s, cropper)
+
+# r 
+```
+### The dimensions of my cropped image stacks are as follows: nrow (340), ncol (346), ncell (117,640), nlayers (6).  The CRS is UTM WGS84 and the cell resolution is 30 x 30 (meters), which is the same as above. 
+
+### Question 3:
+```{r}
+
+#Near Infrared (NIR) wavelength is commonly used to analysis vegetation health because vegetation reflects strongly in this portion of the electromagnetic spectrum.
+
+#Shortwave Infrared (SWIR) bands are useful for discerning what is wet and dry.
+
+ras_name = r %>% setNames(c("coastal", "blue", "green", "red",  "NIR", "SWIR 1"))
+
+#R_G_B (natural color)
+plotRGB(ras_name, r = 4, g = 3, b = 2)
+```
+```{r}
+#NIR_R_G (fa)(color infrared)
+plotRGB(ras_name, r = 5, g = 4, b = 3)
+```
+
+```{r}
+#NIR_SWIR1_R (false color water focus)
+plotRGB(ras_name, r = 5, g = 6, b = 4)
+```
+```{r}
+# (false color urban focus)
+plotRGB(ras_name, r = 7, g = 6, b = 4)
+```
+
+```{r}
+par(mfrow = c(2,2))
+#R_G_B (natural color)
+plotRGB(ras_name, r = 4, g = 3, b = 2, stretch = "lin")
+#NIR_R_G (fa)(color infrared)
+plotRGB(ras_name, r = 5, g = 4, b = 3, stretch = "lin")
+#NIR_SWIR1_R (false color water focus)
+plotRGB(ras_name, r = 5, g = 6, b = 4, stretch = "lin")
+# (false color urban focus)
+plotRGB(ras_name, r = 7, g = 6, b = 4, stretch = "lin")
+```
+```{r}
+par(mfrow = c(2,2))
+#R_G_B (natural color)
+plotRGB(ras_name, r = 4, g = 3, b = 2, stretch = "hist")
+#NIR_R_G (fa)(color infrared)
+plotRGB(ras_name, r = 5, g = 4, b = 3, stretch = "hist")
+#NIR_SWIR1_R (false color water focus)
+plotRGB(ras_name, r = 5, g = 6, b = 4, stretch = "hist")
+# (false color urban focus)
+plotRGB(ras_name, r = 7, g = 6, b = 4, stretch = "hist")
+```
+
+### The purpose of applying a color stretch is to seperate the variance in color to better show the information that is needed for a project.  This helps with seeing and understanding patterns within a given landscape.
+
+
+### Question 4:
+```{r}
+#Raster Algebra
+
+#Normalized difference vegetation index
+NDVI = (r$band5 - r$band4)/(r$band5 + r$band4)
+#plot(NDVI)
+
+#Normalized Difference Water Index
+NDWI = (r$band3 - r$band5)/(r$band3 + r$band5)
+
+#Modified, normalized difference water index  
+MNDWI = (r$band3 - r$band6)/(r$band3 + r$band6)
+
+#Water ratio index
+WRI = (r$band3 + r$band4)/(r$band5 + r$band6)
+
+#Simple water index  
+SWI = 1/(sqrt(r$band2 - r$band6))  
+
+ras_stack = stack(NDVI, NDWI, MNDWI, WRI, SWI) %>% 
+  setNames(c("NDVI", "NDWI", "MNDWI", "WRI", "SWI"))
+        
+palette = colorRampPalette(c("blue", "white", "red"))
+
+plot(ras_stack, col = palette(256))
+```
+
+### The images appear to deviate based on placement and quanity of blue, white, and red.  For example, NDVI & SWI show the water as blue, but they differ in that SWI appears void of the color red.  Another example, NDWI, MNDWI, and WRI all show the water as red, but they differ in amount of white versus blue.  Additionally, all five maps have a different scale level and axis labels. 
+
+
+```{r}
+# Raster Thresholding
+
+thres_NDVI = function(x){ifelse(x <= 0,1,0)}
+thres_NDWI = function(x){ifelse(x >= 0,1,0)}
+thres_MNDWI = function(x){ifelse(x >= 0,1,0)}
+thres_WRI = function(x){ifelse(x >= 1,1,0)}
+thres_SWI = function(x){ifelse(x <= 5,1,0)}
+
+calc_NDVI = calc(NDVI, thres_NDVI)
+calc_NDWI = calc(NDWI, thres_NDWI)
+calc_MNDWI = calc(MNDWI, thres_MNDWI)
+calc_WRI = calc(WRI, thres_WRI)
+calc_SWI = calc(SWI, thres_SWI)
+
+flood = stack(c(calc_NDVI, calc_NDWI, calc_MNDWI, calc_WRI, calc_SWI)) %>% 
+  setNames(c("NDVI", "NDWI", "MNDWI", "WRI", "SWI"))
+
+palette_fld = colorRampPalette(c("white", "blue"))
+
+plot(flood, col = palette_fld(256))
+```
+
+### Question 5:
+```{r}
+set.seed(09072020)
+
+```
+
+```{r}
+values_g = getValues(r)
+
+dim(values_g)
+```
+### There is one data set (matrix?) with the size of 59,996,291 and 6 layers.
+
+```{r}
+values_g = na.omit(values_g)
+
+v5 = scale(values_g)
+
+E5 = kmeans(v5, 12, iter.max = 100)
+
+kmeans_raster = flood$NDVI
+
+values(kmeans_raster) = E5$cluster
+
+plot(kmeans_raster)
+```
+
+```{r}
+E6 = kmeans(v5, 6, iter.max = 100)
+
+kmeans_raster_6 = flood$NDVI
+
+clus_5 = values(kmeans_raster_6) = E6$cluster
+
+plot(kmeans_raster_6)
+```
+
+```{r}
+E3 = kmeans(v5, 3, iter.max = 100)
+
+kmeans_raster_3 = flood$NDVI
+
+values(kmeans_raster_3) = E3$cluster
+
+plot(kmeans_raster_3)
+```
+
+```{r}
+table = table(getValues(calc_MNDWI), getValues(kmeans_raster_6))
+```
+```{r}
+which.max(table)
+```
+
+```{r}
+thres_MNDWI_5 = function(x){ifelse(x == 3,1,0)}
+#calc_MNDWI = calc(MNDWI, thres_MNDWI)
+
+calc_5 = calc(kmeans_raster_6, thres_MNDWI_5) %>% setNames(c('most flooded'))
+
+layer_5 = addLayer(flood, calc_5) 
+
+palette_calc_5 = colorRampPalette(c("white", "blue"))
+
+plot(layer_5, col = palette_calc_5(256))
+
+```
+
+### Trying to figure out where the error was in the addition of the 6th map
+```{r}
+thres_NDVI = function(x){ifelse(x <= 0,1,0)}
+thres_NDWI = function(x){ifelse(x >= 0,1,0)}
+thres_MNDWI = function(x){ifelse(x >= 0,1,0)}
+thres_WRI = function(x){ifelse(x >= 1,1,0)}
+thres_SWI = function(x){ifelse(x <= 5,1,0)}
+
+calc_NDVI = calc(NDVI, thres_NDVI)
+calc_NDWI = calc(NDWI, thres_NDWI)
+calc_MNDWI = calc(MNDWI, thres_MNDWI)
+calc_WRI = calc(WRI, thres_WRI)
+calc_SWI = calc(SWI, thres_SWI)
+
+thres_MNDWI_5 = function(x){ifelse(x == 1,1,0)}
+#calc_MNDWI = calc(MNDWI, thres_MNDWI)
+
+calc_5 = calc(kmeans_raster_6, thres_MNDWI_5) 
+
+
+flood_5 = stack(c(calc_NDVI, calc_NDWI, calc_MNDWI, calc_WRI, calc_SWI, calc_5)) %>% 
+  setNames(c("NDVI", "NDWI", "MNDWI", "WRI", "SWI", "most flooded"))
+
+palette_calc_5 = colorRampPalette(c("white", "blue"))
+
+plot(flood_5, col = palette_calc_5(256))
+```
+
+### Question 6:
+```{r}
+
+total_area = cellStats(flood_5, sum)
+
+knitr::kable(total_area, caption = "Flooded Area: Cells", col.names = c("cells"))
+
+```
+
+```{r}
+
+total_area_2 = total_area * (900)
+
+knitr::kable(total_area_2, caption = "Flooded Area: Area", col.names = c("Area m2"))
+
+```
+
+```{r}
+flood_6 = calc(layer_5, function(x){sum(x)}) 
+
+plot(flood_6, col = blues9)
+```
+```{r}
+cell_val = ifelse(values(layer_5) ==0, NA, values(layer_5))
+
+mapview(flood_6)
+```
+### The cell values are not an even number because they are combined to geo map data scale.
+
+### EXTRA CREDIT
+```{r}
+flood_ec = st_point(c(-91.789504, 42.063058)) %>% 
+  st_sfc() %>% 
+  st_as_sf(coords = -91.789504,42.063058, crs = 4326) %>% 
+  st_transform(crs(layer_5))
+
+raster::extract(layer_5, flood_ec)
+```
+### (I'm not sure why "most.flooded" was created as two: "most.flooded.1" and "most.flooded.2", this issue gives me 7 total maps (not the 6)).  There were six of the seven maps which captured the flooding in Palo, Iowa (coordinates -91.789504, 42.063058).  Luckly, it appears that this was a vacant lot.  
+
