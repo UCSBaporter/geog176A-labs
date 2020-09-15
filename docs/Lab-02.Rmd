@@ -9,7 +9,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "75%", fig.align = 'center')
 ```
 
 ## COVID-19 Data
@@ -20,14 +20,18 @@ knitr::opts_chunk$set(echo = TRUE)
 https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv
 ```
 
-### Start
+### Libraries
 
-```{r, message=FALSE, warning=FALSE}
+```{r}
 library(tidyverse)
 library(knitr)
 library(readxl)
 library(zoo)
+```
 
+### Start
+
+```{r}
 url = 'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'
 home = read_csv(url)
 
@@ -41,16 +45,10 @@ CA_pop_2019 = pop %>%
 
 ```
 
-```{r, eval = FALSE}
-
-```
-
 ## Question 1: Covid-19 California Cases 
 
-```{r, message=TRUE, warning=FALSE}
-library(tidyverse)
-
-url = 'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'
+```{r}
+#Step 1
 
 home = read_csv(url)
 
@@ -74,14 +72,14 @@ knitr::kable(most_cumulative_cases, caption = c("Cumulative Case Counts: Top 5 C
 
 
 
-```{r, message=FALSE, warning=FALSE}
+```{r}
 
-#Step 2
+#Step 2 (Table 2)
 
 steptwo = home %>% filter(state == "California") %>% group_by(county) %>% 
   mutate(newCase = cases - lag(cases)) %>% arrange(-newCase) %>% ungroup()
 
-#Step 3
+#Step 3 (Table 2)
 
 #Table 2: 5 counties with most new cases
 most_new_cases = steptwo %>% filter(date == max(date)) %>% slice_max(newCase, n=5) %>% select (county, newCase)
@@ -92,6 +90,7 @@ knitr::kable(most_new_cases, caption = "New Case Counts: Top 5 CA counties", col
 
 
 ```{r}
+#Cumulative Cases with Population (100,000)
 
 pop = readxl::read_excel("../data/PopulationEstimates.xls", skip = 2) %>%
   select(pop2019 = "POP_ESTIMATE_2019", fips = "FIPStxt", state = "State")
@@ -135,21 +134,20 @@ pop_most_new_cases = CA_pop_covid %>% filter(date == max(date)) %>% slice_max(ne
 knitr::kable(pop_most_new_cases, caption = c("Pop New Case Counts: Top 5 CA counties"),
              col.names = c("County", "New Cases with Pop (100,000)"))
 ```
-```{r, message = FALSE}
+
+```{r}
 #Table 3: Safe counties
 
 pop_safe_county = CA_pop_covid %>% 
   group_by(county) %>% 
-  summarize(totNew = sum(newCase, na.rm= TRUE) /  (max(pop2019) /100000)) %>% 
-  filter(totNew <= 100)
+  summarize(totNew = sum(newCase_pc, na.rm= TRUE) /  (max(pop2019) /100000)) %>% 
+  filter(totNew <= 100) 
 
 
 knitr::kable(pop_safe_county, caption = c("Pop Lowest Case Counts: CA counties"),
              col.names = c("County", "Lowest New Cases with Pop")) 
-
-
 ```
-### Results:  Covid-19 cumulative case counts are the highest in the following counties: Los Angeles, Riverside, Orange, San Bernardino, and San Diego.  The highest new cases over the past 14 days are in the following counties: Imperial, Tulare, Merced, Madera, and Yuba.  Despite the covid-19 increases throughout the state the following counties have shown less than 100 new cases over the past 14 days: Alpine, Calaveras, Del Norte, El Dorado, Humboldt, Lake, Mariposa, Modoc, Mono, Nevada, Plumas, Shasta, Siskiyou, Trinity, and Tuolumne.  Based on these results you can see that population density plays a large role in the spread of covid-19 and more remote counties in Northern California have less current spread.
+### Results: (Per assignment date 8_19_20)  Covid-19 cumulative case counts are the highest in the following counties: Los Angeles, Riverside, Orange, San Bernardino, and San Diego.  The highest new cases over the past 14 days are in the following counties: Imperial, Tulare, Merced, Madera, and Yuba.  Despite the covid-19 increases throughout the state the following counties have shown less than 100 new cases over the past 14 days: Alpine, Calaveras, Del Norte, El Dorado, Humboldt, Lake, Mariposa, Modoc, Mono, Nevada, Plumas, Shasta, Siskiyou, Trinity, and Tuolumne.  Based on these results you can see that population density plays a large role in the spread of covid-19 and more remote counties in Northern California have less current spread.
     
 
 
@@ -174,16 +172,5 @@ Q2 %>% ggplot(aes(x = date, y = newCases)) + geom_col(aes(y = newCases), col = N
   theme(aspect.ratio = .5)
 ```
 
-
-
-
-
-
-
-
-```{r}
-
-
-```
-### Results:  (Although I was unable to process the second graph I've studied Covid-19 data since the "Stay in Place" orders were given.)  It is important to review population numbers when reflecting on Covid-19 cases to get a better picture of states that are having large peaks or dips within case numbers.  Without factoring population, states with higher populations will appear to have way more covid-19 cases, but this is not the true picture.  Out of the four states reviewed, California has the largest population overall, but currently does not have the highest covid-19 cases.  Since the first set of graphs do not take population into account California would appear much higher than overall and Louisiana would appear to have low cases.  Since Louisiana has a much lower population than California, Florida, and New York if population was factored in the Louisiana graph would show much higher per population cases.  
+### Results: (Per assignment date 8_19_20)  (Although I was unable to process the second graph I've studied Covid-19 data since the "Stay in Place" orders were given.)  It is important to review population numbers when reflecting on Covid-19 cases to get a better picture of states that are having large peaks or dips within case numbers.  Without factoring population, states with higher populations will appear to have way more covid-19 cases, but this is not the true picture.  Out of the four states reviewed, California has the largest population overall, but currently does not have the highest covid-19 cases.  Since the first set of graphs do not take population into account California would appear much higher than overall and Louisiana would appear to have low cases.  Since Louisiana has a much lower population than California, Florida, and New York if population was factored in the Louisiana graph would show much higher per population cases.  
 
