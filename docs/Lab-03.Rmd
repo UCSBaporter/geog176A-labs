@@ -7,6 +7,10 @@ output:
     theme: journal
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "75%", fig.align = 'center')
+```
+
 ### Libraries
 ```{r}
 
@@ -72,6 +76,7 @@ cities %>% select(city,state_name, dist_to_border) %>%
   knitr::kable(caption = "Five Cities Farthest From USA Border", col.names = c("city", "state", "distance"))
 
 ```
+
 ```{r}
 #2.2: Distance to States (km)
 
@@ -87,6 +92,7 @@ cities %>% select(city,state_name, dist_to_stborder) %>%
   knitr::kable(caption = "Five Cities Farthest From State Border", col.names = c("city", "state", "distance"))
 
 ```
+
 ```{r}
 #2.3: Distance to Mexico (km)
 
@@ -139,6 +145,7 @@ ggplot() +
 ggsave(plot = last_plot(), file= "../img/dataLab-03.png")
 
 ```
+
 ```{r}
 #3.2: City Distance from the Border
 
@@ -164,6 +171,7 @@ ggplot() +
 
 ggsave(plot = last_plot(), file= "../img/cityLab-03.png")
 ```
+
 ```{r}
 #3.3: City Distance from Nearest State
 
@@ -296,7 +304,5 @@ ggplot()+
         y = " ", caption = "ACLU") + theme_bw()
   
   ggsave(plot = last_plot(), file="../img/extraLab-03.png")
-
-
 ```
 
