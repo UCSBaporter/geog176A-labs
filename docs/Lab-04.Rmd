@@ -1,11 +1,15 @@
 ---
-title: "Geography 176A: Tesselations, Point-in-Polygon"
+title: "Geography 176A"
 author: '[Abigail Porter](https://ucsbaporter.github.io/UCSBaporterW1/first-webpage/index.html)'
-subtitle: 'Lab 04'
+subtitle: 'Lab 04: Tesselations, Point-in-Polygon'
 output:
   html_document:
     theme: journal
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "75%", fig.align = 'center')
+```
 
 ### Libraries
 
@@ -282,8 +286,7 @@ dam_sf %>% filter(grepl('D', PURPOSES)) %>% point_in_polygon3(hex_grid, 'id') %>
   Each dam category shows different location and quantity of dams represented.  Though, given the Hexagonal pattern the exact location is harder to determine and place within a specific area, county, or state at the given scale.  Overall there are patterns of location between the different dam categories that can be understood based on region (NE, NW, SE, SW, MW, etc).  I believe that the hexagonal pattern is the best choice outside of the county identifier for general understanding of the dam category regional patterns, but the county identifier would be easier to view if familiar with county location/shape throughout the country.  
   Dams are placed where river systems and/or lakes (both permanent and/or ice melt filled) are located for many purposes.  Irrigation dams have the largest overall coverage from the NW diagonally down toward SE which coincides with agricultural usage.  Navigational dams are mainly scattered throughout the east coast to mid-Atlantic, but also appear between the border of WA and OR along the large river border.  Recreational dams had the largest represented numbers (38,077) placed almost equally away from the coast throughout the east which makes sense with hot and very humid summers.  I was surprised that Fish and Wildlife dams and Fire Protection dams are not found in California, but possibly that is explained by the large Water Supply dam use in the state.  As for Debris control dams, I would be curious to learn about this need more in depth.       
 
-```{r}
-```
+---
 ### Extra Credit:
 
 ```{r}
@@ -300,6 +303,3 @@ leaflet(data = MS_river) %>% addProviderTiles(providers$CartoDB) %>%
 
 ```
 
-```{r}
-
-```

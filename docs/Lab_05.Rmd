@@ -1,11 +1,15 @@
 ---
-title: "Geography 176A: Rasters & Remote Sensing"
+title: "Geography 176A"
 author: '[Abigail Porter](https://ucsbaporter.github.io/UCSBaporterW1/first-webpage/index.html)'
-subtitle: 'Lab 05'
+subtitle: 'Lab 05: Rasters & Remote Sensing'
 output:
   html_document:
-  theme: journal
+    theme: journal
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "75%", fig.align = 'center')
+```
 
 ### Libraries
 ```{r}
@@ -310,6 +314,7 @@ mapview(flood_6)
 ```
 ### The cell values are not an even number because they are combined to geo map data scale.
 
+---
 ### EXTRA CREDIT
 ```{r}
 flood_ec = st_point(c(-91.789504, 42.063058)) %>% 
@@ -319,5 +324,5 @@ flood_ec = st_point(c(-91.789504, 42.063058)) %>%
 
 raster::extract(layer_5, flood_ec)
 ```
-### (I'm not sure why "most.flooded" was created as two: "most.flooded.1" and "most.flooded.2", this issue gives me 7 total maps (not the 6)).  There were six of the seven maps which captured the flooding in Palo, Iowa (coordinates -91.789504, 42.063058).  Luckly, it appears that this was a vacant lot.  
+### Five of the six maps captured the flooding in Palo, Iowa (coordinates -91.789504, 42.063058).  Luckly, it appears that this was a vacant lot.  
 
